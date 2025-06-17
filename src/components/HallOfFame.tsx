@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {Edit3, Share, Target, User} from 'lucide-react';
 import HallOfFameShareModal from './HallOfFameShareModal';
+import { analytics } from '../services/analytics';
 
 interface HallOfFameProps {
   totalFound: number;
@@ -49,6 +50,9 @@ const HallOfFame: React.FC<HallOfFameProps> = ({totalFound, puzzlesSolved, onSha
       setUsername(finalUsername);
       localStorage.setItem('detective_username', finalUsername);
       setTempUsername(finalUsername);
+      
+      // Track username change
+      analytics.hallOfFameUsernameChanged(finalUsername);
     } else {
       setTempUsername(username);
     }

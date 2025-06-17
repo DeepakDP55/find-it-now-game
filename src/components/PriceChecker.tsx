@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {AlertCircle, Calculator, RotateCcw} from 'lucide-react';
+import { analytics } from '../services/analytics';
 
 interface GameData {
   itemPrice: number;
@@ -54,6 +55,9 @@ const PriceChecker: React.FC<PriceCheckerProps> = ({
     const userAnswer = parseInt(userInput);
 
     if (userAnswer === correctDifference) {
+      // Track correct answer
+      analytics.answerSubmitted(userInput, true, attempts + 1, correctDifference);
+      
       setIsCorrect(true);
       setShowExplanation(true);
       setShowWrongFeedback(false);

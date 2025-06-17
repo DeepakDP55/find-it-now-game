@@ -1,6 +1,7 @@
 import React, {useRef} from 'react';
 import {Twitter, X} from 'lucide-react';
 import ShareCard from './ShareCard';
+import { analytics } from '../services/analytics';
 
 interface GameData {
   displayedTotal: number;
@@ -22,6 +23,10 @@ const ShareModal: React.FC<ShareModalProps> = ({onShare, onClose, gameData, onNe
   const shareOnTwitter = () => {
     const shareText = `UnzeptoChallenge 🔍✨\n\n💸 Aha! Just caught a sneaky ₹${difference} error hiding in plain sight!\n\nThink you've got the eyes to spot what others miss?\n`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
+    
+    // Track Twitter share
+    analytics.sharedOnTwitter(difference, 'twitter');
+    
     window.open(url, '_blank');
   };
 
@@ -61,7 +66,10 @@ const ShareModal: React.FC<ShareModalProps> = ({onShare, onClose, gameData, onNe
             </button>
 
             <button
-              onClick={() => window.open('https://matiks.com/apps', '_blank')}
+              onClick={() => {
+                analytics.matiksCTAClicked('share_modal');
+                window.open('https://matiks.com/apps', '_blank');
+              }}
               className="w-full py-3 bg-gradient-to-r from-purple-600 to-green-600 rounded-lg font-semibold flex items-center justify-center gap-2 hover:scale-105 transition-transform duration-200"
             >
               <img src="/bolt.png" alt="Bolt" className="h-5 w-5" /> Try Matiks
@@ -75,7 +83,10 @@ const ShareModal: React.FC<ShareModalProps> = ({onShare, onClose, gameData, onNe
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => window.open('https://x.com/cortisoul_', '_blank')}
+                onClick={() => {
+                  analytics.twitterFollowClicked('share_modal');
+                  window.open('https://x.com/cortisoul_', '_blank');
+                }}
                 className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors duration-200"
               >
                 Follow me on Twitter

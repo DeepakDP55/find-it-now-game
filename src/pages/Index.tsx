@@ -2,15 +2,12 @@ import React, {useEffect, useState} from 'react';
 import BillSummary from '../components/BillSummary';
 import PriceChecker from '../components/PriceChecker';
 import ShareModal from '../components/ShareModal';
-// WrongAnswerModal is no longer used as we show errors directly in the PriceChecker
-// import WrongAnswerModal from '../components/WrongAnswerModal';
 import HallOfFame from '../components/HallOfFame';
+import { initializeAnalytics, analytics } from '../services/analytics';
 
 const Index = () => {
   const [gameData, setGameData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
-  // We no longer use the wrong answer modal
-  // const [showWrongModal, setShowWrongModal] = useState(false);
   const [hasFoundError, setHasFoundError] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -23,6 +20,12 @@ const Index = () => {
   });
 
   useEffect(() => {
+    // Initialize PostHog
+    initializeAnalytics();
+    
+    // Track page view
+    analytics.pageViewed();
+    
     generateNewGame();
   }, []);
 
@@ -54,20 +57,29 @@ const Index = () => {
       hasError: true,
       correctTotal
     });
+    
+    // Track game started
+    analytics.gameStarted({
+      displayedTotal,
+      actualTotal,
+      correctTotal
+    });
+    
     setHasFoundError(false);
     setUserAnswer('');
     setAttempts(0);
     setShowShareModal(false);
     // Increment the game key to force remount of PriceChecker
     setGameKey(prevKey => prevKey + 1);
-    // We no longer use the wrong answer modal
-    // setShowWrongModal(false);
   };
 
   const handleCorrectGuess = () => {
     const difference = Math.abs(gameData.displayedTotal - gameData.actualTotal);
     const newTotal = totalDifferenceFound + difference;
     const newPuzzleCount = puzzlesSolved + 1;
+
+    // Track successful completion
+    analytics.challengeCompleted(difference, attempts, newTotal, newPuzzleCount);
 
     setTotalDifferenceFound(newTotal);
     setPuzzlesSolved(newPuzzleCount);
@@ -76,20 +88,27 @@ const Index = () => {
 
     setHasFoundError(true);
     setShowShareModal(true);
+    
+    // Track share modal opening
+    analytics.shareModalOpened(difference);
   };
 
   const handleWrongGuess = (answer) => {
     setUserAnswer(answer);
     setAttempts(prev => prev + 1);
-    // We no longer show the modal for wrong answers
-    // setShowWrongModal(true);
+    // Track wrong answer submission
+    const difference = Math.abs(gameData.displayedTotal - gameData.actualTotal);
+    analytics.answerSubmitted(answer, false, attempts + 1, difference);
   };
 
   const handleShare = () => {
+    const difference = Math.abs(gameData.displayedTotal - gameData.actualTotal);
+    
     if (navigator.share) {
+      analytics.sharedOnTwitter(difference, 'native_share');
       navigator.share({
         title: 'I found the pricing error! 🕵️‍♀️',
-        text: `I just spotted a ₹${Math.abs(gameData.displayedTotal - gameData.actualTotal)} calculation mistake! Can you find it too?`,
+        text: `I just spotted a ₹${difference} calculation mistake! Can you find it too?`,
         url: window.location.href
       });
     } else {
@@ -99,14 +118,13 @@ const Index = () => {
   };
 
   const handleTryAgain = () => {
-    // Modal is no longer shown, so we don't need to hide it
-    // setShowWrongModal(false);
     if (attempts >= 3) {
       generateNewGame();
     }
   };
 
   const handleNewChallenge = () => {
+    analytics.newChallengeClicked('main_button');
     generateNewGame();
   };
 
@@ -163,6 +181,7 @@ const Index = () => {
           totalFound={totalDifferenceFound}
           puzzlesSolved={puzzlesSolved}
           onShare={(shareData) => {
+            analytics.hallOfFameShared(totalDifferenceFound, puzzlesSolved, 'detective');
             if (navigator.share) {
               navigator.share(shareData);
             } else {
@@ -177,21 +196,12 @@ const Index = () => {
           onShare={handleShare}
           onClose={() => setShowShareModal(false)}
           gameData={gameData}
-          onNewChallenge={handleNewChallenge}
+          onNewChallenge={() => {
+            analytics.newChallengeClicked('share_modal');
+            handleNewChallenge();
+          }}
         />
       )}
-
-      {/* Wrong answer feedback is now shown directly in the PriceChecker component */}
-      {/* {showWrongModal && (
-        <WrongAnswerModal
-          onClose={() => setShowWrongModal(false)}
-          onTryAgain={handleTryAgain}
-          correctAnswer={Math.abs(gameData.displayedTotal - gameData.actualTotal)}
-          userAnswer={userAnswer}
-          attempts={attempts}
-          maxAttempts={3}
-        />
-      )} */}
     </div>
   );
 };
