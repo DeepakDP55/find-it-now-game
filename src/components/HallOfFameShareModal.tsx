@@ -1,7 +1,7 @@
 import React, {useRef} from 'react';
 import {Twitter, X} from 'lucide-react';
 import HallOfFameShareCard from './HallOfFameShareCard';
-import { analytics } from '../services/analytics';
+import {analytics} from '../services/analytics';
 
 interface HallOfFameShareModalProps {
   onShare: () => void;
@@ -31,10 +31,10 @@ const HallOfFameShareModal: React.FC<HallOfFameShareModalProps> = ({
   const shareOnTwitter = () => {
     const shareText = `UnzeptoChallenge ✨\n\n🏆 Meet ${username}, the ${rank.emoji} ${rank.title}!\n💰 Uncovered ₹${totalFound} in errors\n🧩 Cracked ${puzzlesSolved} puzzles\n📊 Avg detective score: ₹${averagePerPuzzle}/puzzle\n\nThink you can out-sleuth me? Game on!\n`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
-    
+
     // Track Hall of Fame Twitter share
     analytics.sharedOnTwitter(totalFound, 'twitter');
-    
+
     window.open(url, '_blank');
   };
 
@@ -85,7 +85,7 @@ const HallOfFameShareModal: React.FC<HallOfFameShareModalProps> = ({
               <button
                 onClick={() => {
                   analytics.twitterFollowClicked('hall_of_fame');
-                  window.open('https://x.com/cortisoul_', '_blank');
+                  window.open('https://x.com/randomdeitie', '_blank');
                 }}
                 className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors duration-200"
               >
@@ -98,7 +98,7 @@ const HallOfFameShareModal: React.FC<HallOfFameShareModalProps> = ({
                 }}
                 className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors duration-200"
               >
-                Try my App
+                <img src="/bolt.png" alt="Bolt" className="h-5 w-5"/> Try Matiks
               </button>
             </div>
           </div>
