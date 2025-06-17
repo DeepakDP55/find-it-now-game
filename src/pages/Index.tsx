@@ -1,215 +1,197 @@
-
-import React, { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Trophy, RotateCcw, Eye } from 'lucide-react';
-import { toast } from 'sonner';
-
-interface Difference {
-  id: number;
-  x: number;
-  y: number;
-  radius: number;
-}
+import React, {useEffect, useState} from 'react';
+import BillSummary from '../components/BillSummary';
+import PriceChecker from '../components/PriceChecker';
+import ShareModal from '../components/ShareModal';
+// WrongAnswerModal is no longer used as we show errors directly in the PriceChecker
+// import WrongAnswerModal from '../components/WrongAnswerModal';
+import HallOfFame from '../components/HallOfFame';
 
 const Index = () => {
-  const differences: Difference[] = [
-    { id: 1, x: 25, y: 40, radius: 8 },
-    { id: 2, x: 60, y: 25, radius: 6 },
-    { id: 3, x: 80, y: 60, radius: 7 },
-    { id: 4, x: 15, y: 75, radius: 5 },
-    { id: 5, x: 45, y: 80, radius: 6 },
-  ];
+  const [gameData, setGameData] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  // We no longer use the wrong answer modal
+  // const [showWrongModal, setShowWrongModal] = useState(false);
+  const [hasFoundError, setHasFoundError] = useState(false);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const [gameKey, setGameKey] = useState(1); // Add a key to force remount of PriceChecker
+  const [totalDifferenceFound, setTotalDifferenceFound] = useState(() => {
+    return parseInt(localStorage.getItem('totalDifferenceFound') || '0');
+  });
+  const [puzzlesSolved, setPuzzlesSolved] = useState(() => {
+    return parseInt(localStorage.getItem('puzzlesSolved') || '0');
+  });
 
-  const [foundDifferences, setFoundDifferences] = useState<number[]>([]);
-  const [gameCompleted, setGameCompleted] = useState(false);
-  const [showHints, setShowHints] = useState(false);
+  useEffect(() => {
+    generateNewGame();
+  }, []);
 
-  const handleImageClick = useCallback((event: React.MouseEvent<HTMLDivElement>, imageType: 'left' | 'right') => {
-    if (imageType === 'left') return; // Only allow clicking on the right image
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
+  const generateNewGame = () => {
+    // Generate random pricing with minimum difference of 50
+    const itemPrice = Math.floor(Math.random() * 500) + 100;
+    const gst = Math.floor(itemPrice * 0.18);
+    const correctTotal = itemPrice + gst;
 
-    const clickedDifference = differences.find(diff => {
-      const distance = Math.sqrt(Math.pow(x - diff.x, 2) + Math.pow(y - diff.y, 2));
-      return distance <= diff.radius && !foundDifferences.includes(diff.id);
+    const deliveryFee = Math.random() > 0.5 ? 0 : Math.floor(Math.random() * 50) + 20;
+    const membershipDiscount = Math.floor(Math.random() * 100) + 50;
+
+    // Calculate actual total (including membership in the cost, not as discount)
+    const actualTotal = correctTotal + deliveryFee + membershipDiscount;
+
+    // Ensure minimum difference of 50
+    const minErrorAmount = 50;
+    const maxErrorAmount = 200;
+    const errorAmount = Math.floor(Math.random() * (maxErrorAmount - minErrorAmount)) + minErrorAmount;
+    const displayedTotal = actualTotal + errorAmount;
+
+    setGameData({
+      itemPrice,
+      gst,
+      deliveryFee,
+      membershipDiscount,
+      displayedTotal,
+      actualTotal,
+      hasError: true,
+      correctTotal
     });
+    setHasFoundError(false);
+    setUserAnswer('');
+    setAttempts(0);
+    setShowShareModal(false);
+    // Increment the game key to force remount of PriceChecker
+    setGameKey(prevKey => prevKey + 1);
+    // We no longer use the wrong answer modal
+    // setShowWrongModal(false);
+  };
 
-    if (clickedDifference) {
-      const newFound = [...foundDifferences, clickedDifference.id];
-      setFoundDifferences(newFound);
-      toast.success(`Great! You found difference ${newFound.length}/${differences.length}`, {
-        duration: 2000,
+  const handleCorrectGuess = () => {
+    const difference = Math.abs(gameData.displayedTotal - gameData.actualTotal);
+    const newTotal = totalDifferenceFound + difference;
+    const newPuzzleCount = puzzlesSolved + 1;
+
+    setTotalDifferenceFound(newTotal);
+    setPuzzlesSolved(newPuzzleCount);
+    localStorage.setItem('totalDifferenceFound', newTotal.toString());
+    localStorage.setItem('puzzlesSolved', newPuzzleCount.toString());
+
+    setHasFoundError(true);
+    setShowShareModal(true);
+  };
+
+  const handleWrongGuess = (answer) => {
+    setUserAnswer(answer);
+    setAttempts(prev => prev + 1);
+    // We no longer show the modal for wrong answers
+    // setShowWrongModal(true);
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'I found the pricing error! 🕵️‍♀️',
+        text: `I just spotted a ₹${Math.abs(gameData.displayedTotal - gameData.actualTotal)} calculation mistake! Can you find it too?`,
+        url: window.location.href
       });
-
-      if (newFound.length === differences.length) {
-        setGameCompleted(true);
-        toast.success('🎉 Congratulations! You found all differences!', {
-          duration: 4000,
-        });
-      }
     } else {
-      toast.error('No difference here. Keep looking!', {
-        duration: 1500,
-      });
+      navigator.clipboard.writeText(window.location.href);
     }
-  }, [foundDifferences, differences]);
-
-  const resetGame = () => {
-    setFoundDifferences([]);
-    setGameCompleted(false);
-    setShowHints(false);
-    toast.info('Game reset! Find all 5 differences.');
+    setShowShareModal(false);
   };
 
-  const toggleHints = () => {
-    setShowHints(!showHints);
-    toast.info(showHints ? 'Hints hidden' : 'Hints revealed!');
+  const handleTryAgain = () => {
+    // Modal is no longer shown, so we don't need to hide it
+    // setShowWrongModal(false);
+    if (attempts >= 3) {
+      generateNewGame();
+    }
   };
 
-  const progressPercentage = (foundDifferences.length / differences.length) * 100;
+  const handleNewChallenge = () => {
+    generateNewGame();
+  };
+
+  if (!gameData) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-green-400 text-xl animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
-            Spot the Difference
+    <div className="min-h-screen bg-black text-white p-4 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-green-900/20"></div>
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl"></div>
+
+      <div className="relative z-10 max-w-md mx-auto">
+        <header className="text-center mb-8 animate-fade-in">
+          <h1
+            className="text-3xl font-bold bg-gradient-to-r from-green-400 to-purple-400 bg-clip-text text-transparent mb-2">
+            Unzepto Challenge!!
           </h1>
-          <p className="text-lg text-gray-600 mb-6">
-            Find all 5 differences between these two images. Click on the right image when you spot a difference!
+          <p className="text-gray-400 text-sm">
+            Find the price difference! 🕵️‍♀️
           </p>
-          
-          {/* Progress and Controls */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="text-lg px-3 py-1">
-                {foundDifferences.length}/{differences.length} Found
-              </Badge>
-              {gameCompleted && (
-                <Badge className="bg-green-500 text-white animate-scale-in">
-                  <Trophy className="w-4 h-4 mr-1" />
-                  Complete!
-                </Badge>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              <Button onClick={toggleHints} variant="outline" size="sm">
-                <Eye className="w-4 h-4 mr-2" />
-                {showHints ? 'Hide' : 'Show'} Hints
-              </Button>
-              <Button onClick={resetGame} variant="outline" size="sm">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-            </div>
+          <div className="mt-4 flex justify-between text-sm">
+            <span className="text-purple-400">Attempts: {attempts}/3</span>
+            <span className="text-green-400">Total Found: ₹{totalDifferenceFound}</span>
           </div>
+        </header>
 
-          <div className="max-w-md mx-auto mb-8">
-            <Progress value={progressPercentage} className="h-3" />
-          </div>
-        </div>
+        <BillSummary gameData={gameData}/>
 
-        {/* Game Area */}
-        <Card className="p-6 shadow-2xl animate-scale-in">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Left Image - Original */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-center text-gray-700">Original</h3>
-              <div 
-                className="relative bg-gray-200 rounded-lg overflow-hidden aspect-[4/3] cursor-not-allowed"
-                style={{
-                  backgroundImage: `url('https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=600&fit=crop')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              >
-                <div className="absolute inset-0 bg-black bg-opacity-5"></div>
-              </div>
-            </div>
+        <PriceChecker
+          key={gameKey} // Add key to force remount when a new game is generated
+          gameData={gameData}
+          onCorrectGuess={handleCorrectGuess}
+          onWrongGuess={handleWrongGuess}
+          hasFoundError={hasFoundError}
+          attempts={attempts}
+          maxAttempts={3}
+        />
 
-            {/* Right Image - Find Differences */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-center text-gray-700">Find the Differences</h3>
-              <div 
-                className="relative bg-gray-200 rounded-lg overflow-hidden aspect-[4/3] cursor-crosshair hover:shadow-lg transition-shadow"
-                style={{
-                  backgroundImage: `url('https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=600&fit=crop')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-                onClick={(e) => handleImageClick(e, 'right')}
-              >
-                {/* Found Differences Indicators */}
-                {foundDifferences.map(diffId => {
-                  const diff = differences.find(d => d.id === diffId);
-                  if (!diff) return null;
-                  return (
-                    <div
-                      key={diffId}
-                      className="absolute border-4 border-green-400 bg-green-400 bg-opacity-20 rounded-full animate-scale-in"
-                      style={{
-                        left: `${diff.x - diff.radius}%`,
-                        top: `${diff.y - diff.radius}%`,
-                        width: `${diff.radius * 2}%`,
-                        height: `${diff.radius * 2}%`,
-                      }}
-                    >
-                      <div className="absolute inset-0 border-2 border-white rounded-full animate-pulse"></div>
-                    </div>
-                  );
-                })}
+        <button
+          onClick={handleNewChallenge}
+          className="w-full mt-6 py-3 bg-gradient-to-r from-purple-600 to-green-600 rounded-lg font-semibold hover:scale-105 transition-transform duration-200 shadow-lg hover:shadow-purple-500/25"
+        >
+          🎲 New Challenge
+        </button>
 
-                {/* Hint Indicators */}
-                {showHints && differences
-                  .filter(diff => !foundDifferences.includes(diff.id))
-                  .map(diff => (
-                    <div
-                      key={`hint-${diff.id}`}
-                      className="absolute border-2 border-yellow-400 bg-yellow-400 bg-opacity-30 rounded-full animate-pulse"
-                      style={{
-                        left: `${diff.x - diff.radius}%`,
-                        top: `${diff.y - diff.radius}%`,
-                        width: `${diff.radius * 2}%`,
-                        height: `${diff.radius * 2}%`,
-                      }}
-                    />
-                  ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Instructions */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-500 text-sm">
-              💡 Tip: Look carefully for subtle changes in colors, objects, or details between the two images.
-              Click on the right image when you spot a difference!
-            </p>
-          </div>
-        </Card>
-
-        {/* Completion Celebration */}
-        {gameCompleted && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-            <Card className="p-8 text-center max-w-md mx-4 animate-scale-in">
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold text-green-600 mb-2">Congratulations!</h2>
-              <p className="text-gray-600 mb-6">
-                You found all {differences.length} differences! Great attention to detail!
-              </p>
-              <Button onClick={resetGame} className="w-full">
-                Play Again
-              </Button>
-            </Card>
-          </div>
-        )}
+        <HallOfFame
+          totalFound={totalDifferenceFound}
+          puzzlesSolved={puzzlesSolved}
+          onShare={(shareData) => {
+            if (navigator.share) {
+              navigator.share(shareData);
+            } else {
+              navigator.clipboard.writeText(shareData.text);
+            }
+          }}
+        />
       </div>
+
+      {showShareModal && (
+        <ShareModal
+          onShare={handleShare}
+          onClose={() => setShowShareModal(false)}
+          gameData={gameData}
+          onNewChallenge={handleNewChallenge}
+        />
+      )}
+
+      {/* Wrong answer feedback is now shown directly in the PriceChecker component */}
+      {/* {showWrongModal && (
+        <WrongAnswerModal
+          onClose={() => setShowWrongModal(false)}
+          onTryAgain={handleTryAgain}
+          correctAnswer={Math.abs(gameData.displayedTotal - gameData.actualTotal)}
+          userAnswer={userAnswer}
+          attempts={attempts}
+          maxAttempts={3}
+        />
+      )} */}
     </div>
   );
 };
