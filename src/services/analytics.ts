@@ -1,17 +1,13 @@
-
 import posthog from 'posthog-js';
 
 // Initialize PostHog
 export const initializeAnalytics = () => {
   if (typeof window !== 'undefined') {
     posthog.init(
-      process.env.REACT_APP_POSTHOG_KEY || 'your-posthog-key-here',
+      'phc_Mvn3K2nbA4rEgNBxrdmUA7jqCMoKp1dZFs9tbmPgWx8',
       {
-        api_host: process.env.REACT_APP_POSTHOG_HOST || 'https://app.posthog.com',
+        api_host: 'https://us.i.posthog.com',
         loaded: (posthog) => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('PostHog loaded');
-          }
         }
       }
     );
