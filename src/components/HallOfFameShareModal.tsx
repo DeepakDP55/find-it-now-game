@@ -96,7 +96,7 @@ const HallOfFameShareModal: React.FC<HallOfFameShareModalProps> = ({
                   analytics.matiksCTAClicked('hall_of_fame');
                   window.open('https://matiks.com/apps', '_blank');
                 }}
-                className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors duration-200"
+                className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 <img src="/bolt.png" alt="Bolt" className="h-5 w-5"/> Try Matiks
               </button>
